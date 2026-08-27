@@ -21,6 +21,10 @@ export default function Home() {
   const [txType, setTxType] = useState('debit')
   const [txDescription, setTxDescription] = useState('')
 
+  const [report, setReport] = useState<any>(null)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportError, setReportError] = useState('')
+
   useEffect(function () {
     supabase.auth.getUser().then(function (result) {
       setUser(result.data.user)
@@ -75,6 +79,25 @@ export default function Home() {
     setTxDescription('')
     loadWallets()
     loadTransactions(selectedWalletId)
+  }
+
+  const handleGenerateReport = async () => {
+    setReportLoading(true)
+    setReportError('')
+    setReport(null)
+    try {
+      const res = await fetch('/api/generate-report', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setReportError(data.error || 'Something went wrong')
+      } else {
+        setReport(data.report)
+      }
+    } catch (err: any) {
+      setReportError(err.message || String(err))
+    } finally {
+      setReportLoading(false)
+    }
   }
 
   const handleSignOut = async () => {
@@ -184,6 +207,44 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        <div style={cardStyle}>
+          <h3 style={{ color: 'white', fontSize: '1.1rem', margin: 0 }}>Weekly Report</h3>
+          <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.3rem' }}>An honest look at your last 7 days, not just encouragement.</p>
+          <button onClick={handleGenerateReport} disabled={reportLoading} style={buttonStyle}>
+            {reportLoading ? 'Generating...' : 'Generate Report'}
+          </button>
+
+          {reportError && <p style={{ color: '#f0576b', marginTop: '1rem', fontSize: '0.85rem' }}>{reportError}</p>}
+
+          {report && (
+            <div style={{ marginTop: '1.25rem' }}>
+              <p style={{ color: '#ccc', fontSize: '0.9rem', lineHeight: 1.5 }}>{report.summary}</p>
+
+              {report.insights && report.insights.length > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                  <h4 style={{ color: '#888', fontSize: '0.8rem', margin: 0 }}>Insights</h4>
+                  <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem' }}>
+                    {report.insights.map(function (insight: string, i: number) {
+                      return <li key={i} style={{ color: '#ccc', fontSize: '0.85rem', marginBottom: '0.4rem' }}>{insight}</li>
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {report.flags && report.flags.length > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                  <h4 style={{ color: '#f0576b', fontSize: '0.8rem', margin: 0 }}>Worth Your Attention</h4>
+                  <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem' }}>
+                    {report.flags.map(function (flag: string, i: number) {
+                      return <li key={i} style={{ color: '#f0576b', fontSize: '0.85rem', marginBottom: '0.4rem' }}>{flag}</li>
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
