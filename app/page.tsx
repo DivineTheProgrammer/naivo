@@ -26,12 +26,26 @@ export default function Home() {
   const [reportError, setReportError] = useState('')
 
   useEffect(function () {
-    supabase.auth.getUser().then(function (result) {
-      setUser(result.data.user)
-      setCheckingAuth(false)
-      if (result.data.user) {
+    supabase.auth.getUser().then(async function (result) {
+      const currentUser = result.data.user
+      setUser(currentUser)
+
+      if (currentUser) {
+        const profileResult = await supabase
+          .from('users')
+          .select('onboarding_completed')
+          .eq('id', currentUser.id)
+          .single()
+
+        if (profileResult.data && profileResult.data.onboarding_completed === false) {
+          router.push('/onboarding')
+          return
+        }
+
         loadWallets()
       }
+
+      setCheckingAuth(false)
     })
   }, [])
 
