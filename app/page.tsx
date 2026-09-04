@@ -115,6 +115,7 @@ export default function Home() {
   }
 
   const handleSignOut = async () => {
+    sessionStorage.removeItem('naivo_pin_unlocked')
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
