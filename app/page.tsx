@@ -115,10 +115,22 @@ export default function Home() {
   }
 
   const handleSignOut = async () => {
-    sessionStorage.removeItem('naivo_pin_unlocked')
+    document.cookie = 'naivo_pin_verified=; path=/; max-age=0'
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  const isLocked = function (lockedUntil: string | null) {
+    if (!lockedUntil) return false
+    return new Date(lockedUntil).getTime() > Date.now()
+  }
+
+  const timeRemaining = function (lockedUntil: string) {
+    const ms = new Date(lockedUntil).getTime() - Date.now()
+    const hours = Math.floor(ms / (1000 * 60 * 60))
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))
+    return hours + 'h ' + minutes + 'm'
   }
 
   const pageStyle = { minHeight: '100vh', background: '#0a0a0a', padding: '3rem 1.5rem', fontFamily: '-apple-system, sans-serif' }
@@ -130,6 +142,7 @@ export default function Home() {
   const walletChipStyle = function (active: boolean) {
     return { padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid #333', background: active ? '#4f8ef0' : 'transparent', color: active ? '#0a0a0a' : '#ccc', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }
   }
+  const lockBadgeStyle = { display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#2a2410', color: '#d4a54a', fontSize: '0.7rem', fontWeight: 600, marginTop: '0.25rem' }
 
   if (checkingAuth) {
     return (
@@ -206,11 +219,13 @@ export default function Home() {
                 <p style={{ color: '#666', fontSize: '0.85rem' }}>No transactions yet.</p>
               ) : (
                 transactions.map(function (t) {
+                  const locked = isLocked(t.locked_until)
                   return (
                     <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid #232323' }}>
                       <div>
                         <div style={{ color: 'white', fontSize: '0.9rem' }}>{t.description || t.category || 'Transaction'}</div>
                         <div style={{ color: '#666', fontSize: '0.75rem' }}>{new Date(t.transaction_time).toLocaleString()}</div>
+                        {locked && <div style={lockBadgeStyle}>Locked for {timeRemaining(t.locked_until)}</div>}
                       </div>
                       <div style={{ color: t.type === 'credit' ? '#3ecf8e' : '#f0576b', fontWeight: 700, fontSize: '0.9rem' }}>
                         {t.type === 'credit' ? '+' : '-'}{selectedWallet.currency} {Number(t.amount).toLocaleString()}
