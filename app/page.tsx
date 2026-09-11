@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from './lib/supabase'
+import { startRegistration } from '@simplewebauthn/browser'
 
 export default function Home() {
   const router = useRouter()
@@ -24,6 +25,8 @@ export default function Home() {
   const [report, setReport] = useState<any>(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
+
+  const [passkeyStatus, setPasskeyStatus] = useState('')
 
   useEffect(function () {
     supabase.auth.getUser().then(async function (result) {
@@ -114,6 +117,28 @@ export default function Home() {
     }
   }
 
+  const handleRegisterPasskey = async () => {
+    setPasskeyStatus('Requesting options...')
+    try {
+      const optionsRes = await fetch('/api/webauthn/register-options', { method: 'POST' })
+      const options = await optionsRes.json()
+      setPasskeyStatus('Prompting device authenticator...')
+
+      const registrationResponse = await startRegistration({ optionsJSON: options })
+      setPasskeyStatus('Verifying with server...')
+
+      const verifyRes = await fetch('/api/webauthn/register-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: registrationResponse, deviceName: 'My device' }),
+      })
+      const verifyData = await verifyRes.json()
+      setPasskeyStatus(verifyData.message || verifyData.error || 'Unknown result')
+    } catch (err: any) {
+      setPasskeyStatus('Error: ' + (err.message || String(err)))
+    }
+  }
+
   const handleSignOut = async () => {
     document.cookie = 'naivo_pin_verified=; path=/; max-age=0'
     await supabase.auth.signOut()
@@ -176,6 +201,13 @@ export default function Home() {
           <button onClick={handleSignOut} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline' }}>Sign out</button>
         </div>
         <p style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.4rem' }}>{user.email}</p>
+
+        <div style={cardStyle}>
+          <h3 style={{ color: 'white', fontSize: '1rem', margin: 0 }}>Passwordless Login</h3>
+          <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.3rem' }}>Register a passkey to sign in with your device instead of a magic link.</p>
+          <button onClick={handleRegisterPasskey} style={buttonStyle}>Register Passkey</button>
+          {passkeyStatus && <p style={{ color: '#888', fontSize: '0.8rem', marginTop: '0.5rem' }}>{passkeyStatus}</p>}
+        </div>
 
         <div style={cardStyle}>
           <h3 style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>Add a wallet</h3>
