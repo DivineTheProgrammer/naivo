@@ -17,6 +17,7 @@ export default function Home() {
 
   const [newWalletName, setNewWalletName] = useState('')
   const [newWalletProvider, setNewWalletProvider] = useState('')
+  const [newWalletCurrency, setNewWalletCurrency] = useState('NGN')
 
   const [txAmount, setTxAmount] = useState('')
   const [txType, setTxType] = useState('debit')
@@ -28,6 +29,9 @@ export default function Home() {
 
   const [passkeyStatus, setPasskeyStatus] = useState('')
 
+  const [homeCurrency, setHomeCurrency] = useState('NGN')
+  const [rates, setRates] = useState<any[]>([])
+
   useEffect(function () {
     supabase.auth.getUser().then(async function (result) {
       const currentUser = result.data.user
@@ -36,7 +40,7 @@ export default function Home() {
       if (currentUser) {
         const profileResult = await supabase
           .from('users')
-          .select('onboarding_completed')
+          .select('onboarding_completed, home_currency')
           .eq('id', currentUser.id)
           .single()
 
@@ -45,12 +49,39 @@ export default function Home() {
           return
         }
 
+        if (profileResult.data && profileResult.data.home_currency) {
+          setHomeCurrency(profileResult.data.home_currency)
+        }
+
         loadWallets()
+        loadRates()
       }
 
       setCheckingAuth(false)
     })
   }, [])
+
+  const loadRates = async () => {
+    const res = await fetch('/api/exchange-rates')
+    const data = await res.json()
+    setRates(data.rates || [])
+  }
+
+  const convertToHome = function (amount: number, fromCurrency: string) {
+    if (fromCurrency === homeCurrency) return amount
+    if (fromCurrency === 'NGN') {
+      const rate = rates.find(function (r) { return r.target_currency === homeCurrency })
+      return rate ? amount * rate.rate : amount
+    }
+    const rateFromHome = rates.find(function (r) { return r.target_currency === fromCurrency })
+    if (rateFromHome) {
+      const inNgn = amount / rateFromHome.rate
+      if (homeCurrency === 'NGN') return inNgn
+      const rateToHome = rates.find(function (r) { return r.target_currency === homeCurrency })
+      return rateToHome ? inNgn * rateToHome.rate : inNgn
+    }
+    return amount
+  }
 
   const loadWallets = async () => {
     const res = await fetch('/api/wallets')
@@ -73,10 +104,11 @@ export default function Home() {
     await fetch('/api/wallets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newWalletName, provider: newWalletProvider }),
+      body: JSON.stringify({ name: newWalletName, provider: newWalletProvider, currency: newWalletCurrency }),
     })
     setNewWalletName('')
     setNewWalletProvider('')
+    setNewWalletCurrency('NGN')
     loadWallets()
   }
 
@@ -139,6 +171,13 @@ export default function Home() {
     }
   }
 
+  const handleChangeHomeCurrency = async (currency: string) => {
+    setHomeCurrency(currency)
+    if (user) {
+      await supabase.from('users').update({ home_currency: currency }).eq('id', user.id)
+    }
+  }
+
   const handleSignOut = async () => {
     document.cookie = 'naivo_pin_verified=; path=/; max-age=0'
     await supabase.auth.signOut()
@@ -158,6 +197,10 @@ export default function Home() {
     return hours + 'h ' + minutes + 'm'
   }
 
+  const totalInHomeCurrency = wallets.reduce(function (sum, w) {
+    return sum + convertToHome(Number(w.balance), w.currency)
+  }, 0)
+
   const pageStyle = { minHeight: '100vh', background: '#0a0a0a', padding: '3rem 1.5rem', fontFamily: '-apple-system, sans-serif' }
   const containerStyle = { maxWidth: '560px', margin: '0 auto' }
   const cardStyle = { marginTop: '1.5rem', background: '#141414', border: '1px solid #232323', borderRadius: '8px', padding: '1.5rem' }
@@ -168,6 +211,7 @@ export default function Home() {
     return { padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid #333', background: active ? '#4f8ef0' : 'transparent', color: active ? '#0a0a0a' : '#ccc', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }
   }
   const lockBadgeStyle = { display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#2a2410', color: '#d4a54a', fontSize: '0.7rem', fontWeight: 600, marginTop: '0.25rem' }
+  const currencySymbol: any = { NGN: '\u20A6', USD: '$', EUR: '\u20AC', GBP: '\u00A3' }
 
   if (checkingAuth) {
     return (
@@ -203,6 +247,22 @@ export default function Home() {
         <p style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.4rem' }}>{user.email}</p>
 
         <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>Total across all wallets</h3>
+            <select value={homeCurrency} onChange={function (e) { handleChangeHomeCurrency(e.target.value) }} style={{ background: '#1a1a1a', color: '#888', border: '1px solid #333', borderRadius: '4px', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}>
+              <option value="NGN">NGN</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+            </select>
+          </div>
+          <p style={{ color: '#3ecf8e', fontSize: '1.8rem', fontWeight: 700, marginTop: '0.5rem' }}>
+            {currencySymbol[homeCurrency] || ''}{totalInHomeCurrency.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </p>
+          <p style={{ color: '#555', fontSize: '0.7rem', marginTop: '0.2rem' }}>Converted using live rates, may not reflect real-time market movement exactly</p>
+        </div>
+
+        <div style={cardStyle}>
           <h3 style={{ color: 'white', fontSize: '1rem', margin: 0 }}>Passwordless Login</h3>
           <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.3rem' }}>Register a passkey to sign in with your device instead of a magic link.</p>
           <button onClick={handleRegisterPasskey} style={buttonStyle}>Register Passkey</button>
@@ -213,6 +273,12 @@ export default function Home() {
           <h3 style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>Add a wallet</h3>
           <input value={newWalletName} onChange={function (e) { setNewWalletName(e.target.value) }} placeholder="Wallet name, e.g. GTBank" style={inputStyle} />
           <input value={newWalletProvider} onChange={function (e) { setNewWalletProvider(e.target.value) }} placeholder="Provider, e.g. GTBank (optional)" style={inputStyle} />
+          <select value={newWalletCurrency} onChange={function (e) { setNewWalletCurrency(e.target.value) }} style={inputStyle}>
+            <option value="NGN">NGN</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
           <button onClick={handleAddWallet} style={buttonStyle}>Add Wallet</button>
         </div>
 
@@ -221,7 +287,7 @@ export default function Home() {
             {wallets.map(function (w) {
               return (
                 <button key={w.id} onClick={function () { setSelectedWalletId(w.id); loadTransactions(w.id) }} style={walletChipStyle(w.id === selectedWalletId)}>
-                  {w.name}
+                  {w.name} ({w.currency})
                 </button>
               )
             })}
@@ -234,6 +300,11 @@ export default function Home() {
             <p style={{ color: '#3ecf8e', fontSize: '1.5rem', fontWeight: 700, marginTop: '0.5rem' }}>
               {selectedWallet.currency} {Number(selectedWallet.balance).toLocaleString()}
             </p>
+            {selectedWallet.currency !== homeCurrency && (
+              <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                approx. {currencySymbol[homeCurrency] || ''}{convertToHome(Number(selectedWallet.balance), selectedWallet.currency).toLocaleString(undefined, { maximumFractionDigits: 2 })} in {homeCurrency}
+              </p>
+            )}
 
             <div style={{ marginTop: '1.25rem', borderTop: '1px solid #232323', paddingTop: '1.25rem' }}>
               <h3 style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>Add a transaction</h3>
