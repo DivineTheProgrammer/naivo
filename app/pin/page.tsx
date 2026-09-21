@@ -78,16 +78,16 @@ export default function PinPage() {
     }
   }
 
-  const pageStyle = { minHeight: '100vh', background: '#0a0a0a', padding: '3rem 1.5rem', fontFamily: '-apple-system, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+  const pageStyle = { minHeight: '100vh', background: 'var(--bg)', padding: '3rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }
   const containerStyle = { maxWidth: '360px', width: '100%', textAlign: 'center' as const }
-  const inputStyle = { width: '100%', padding: '0.75rem', marginTop: '1rem', color: '#111', backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '6px', fontSize: '1.3rem', textAlign: 'center' as const, letterSpacing: '0.5rem' }
-  const buttonStyle = { marginTop: '1.25rem', width: '100%', padding: '0.75rem', cursor: 'pointer', backgroundColor: 'white', color: '#0a0a0a', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.95rem' }
+  const inputStyle = { width: '100%', padding: '0.75rem', marginTop: '1rem', color: 'var(--text-primary)', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '1.3rem', textAlign: 'center' as const, letterSpacing: '0.5rem' }
+  const buttonStyle = { marginTop: '1.25rem', width: '100%', padding: '0.75rem', cursor: 'pointer', backgroundColor: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: 'var(--radius)', fontWeight: 700, fontSize: '0.95rem' }
 
   if (mode === 'loading') {
     return (
       <div style={pageStyle}>
         <div style={containerStyle}>
-          <p style={{ color: '#666' }}>Loading</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading</p>
         </div>
       </div>
     )
@@ -98,19 +98,19 @@ export default function PinPage() {
       <div style={containerStyle}>
         {mode === 'set' ? (
           <div>
-            <h1 style={{ color: 'white', fontSize: '1.3rem', fontWeight: 700 }}>Set a PIN</h1>
-            <p style={{ color: '#888', fontSize: '0.85rem', marginTop: '0.4rem' }}>This adds a lock to Naivo, separate from your sign in.</p>
+            <h1 style={{ fontSize: '1.3rem' }}>Set a PIN</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.4rem' }}>This adds a lock to Naivo, separate from your sign in.</p>
             <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" style={inputStyle} />
             <input value={confirmPin} onChange={function (e) { setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="Confirm PIN" style={inputStyle} />
             <button onClick={handleSetPin} style={buttonStyle}>Set PIN</button>
-            {error && <p style={{ color: '#f0576b', marginTop: '1rem', fontSize: '0.85rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--debit)', marginTop: '1rem', fontSize: '0.85rem' }}>{error}</p>}
           </div>
         ) : (
           <div>
-            <h1 style={{ color: 'white', fontSize: '1.3rem', fontWeight: 700 }}>Enter your PIN</h1>
+            <h1 style={{ fontSize: '1.3rem' }}>Enter your PIN</h1>
             <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" style={inputStyle} />
             <button onClick={handleVerifyPin} style={buttonStyle}>Unlock</button>
-            {error && <p style={{ color: '#f0576b', marginTop: '1rem', fontSize: '0.85rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--debit)', marginTop: '1rem', fontSize: '0.85rem' }}>{error}</p>}
           </div>
         )}
       </div>
