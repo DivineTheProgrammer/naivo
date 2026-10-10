@@ -50,7 +50,7 @@ export default function PinPage() {
 
     if (res.ok) {
       document.cookie = 'naivo_pin_verified=true; path=/; max-age=86400'
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     } else {
       const data = await res.json()
@@ -70,7 +70,7 @@ export default function PinPage() {
 
     if (data.correct) {
       document.cookie = 'naivo_pin_verified=true; path=/; max-age=86400'
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     } else {
       setError('Incorrect PIN')

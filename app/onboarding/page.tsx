@@ -29,7 +29,7 @@ export default function Onboarding() {
       await supabase.from('users').update({ onboarding_completed: true }).eq('id', user.id)
     }
 
-    router.push('/')
+    router.push('/dashboard')
     router.refresh()
   }
 
