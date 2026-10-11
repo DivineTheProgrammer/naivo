@@ -8,45 +8,68 @@ const supabaseAdmin = createClient(
 
 const TARGET_CURRENCIES = ['USD', 'EUR', 'GBP']
 
+function latestPerCurrency(rows: any[]) {
+  const seen: any = {}
+  const out: any[] = []
+  for (const row of rows) {
+    if (!seen[row.target_currency]) {
+      seen[row.target_currency] = true
+      out.push(row)
+    }
+  }
+  return out
+}
+
 export async function GET() {
   try {
-    const oneHourAgo = new Date(Date.now() - 1000 * 60 * 60).toISOString()
-
     const cacheResult = await supabaseAdmin
       .from('exchange_rates')
       .select('*')
       .eq('base_currency', 'NGN')
-      .gte('fetched_at', oneHourAgo)
       .order('fetched_at', { ascending: false })
+      .limit(30)
 
-    if (cacheResult.data && cacheResult.data.length >= TARGET_CURRENCIES.length) {
-      return NextResponse.json({ rates: cacheResult.data, source: 'cache' })
+    const latest = latestPerCurrency(cacheResult.data || [])
+    const oneHourAgo = Date.now() - 1000 * 60 * 60
+
+    const allFresh = latest.length >= TARGET_CURRENCIES.length && latest.every(function (r) {
+      return new Date(r.fetched_at).getTime() > oneHourAgo
+    })
+
+    if (allFresh) {
+      return NextResponse.json({ rates: latest, source: 'cache', stale: false })
     }
 
-    const fetchedRates = []
+    const fetchedRates: any[] = []
 
     for (const currency of TARGET_CURRENCIES) {
-      const res = await fetch('https://www.currencyexchangetool.com/api/v1/convert?amount=1&from=NGN&to=' + currency)
-      const data = await res.json()
-
-      if (data.success && data.rate) {
-        fetchedRates.push({
-          base_currency: 'NGN',
-          target_currency: currency,
-          rate: data.rate,
-        })
+      try {
+        const res = await fetch('https://www.currencyexchangetool.com/api/v1/convert?amount=1&from=NGN&to=' + currency)
+        if (!res.ok) continue
+        const data = await res.json()
+        if (data.success && data.rate) {
+          fetchedRates.push({ base_currency: 'NGN', target_currency: currency, rate: data.rate })
+        }
+      } catch (fetchErr) {
+        console.error('Rate fetch failed for ' + currency + ':', fetchErr)
       }
     }
 
-    if (fetchedRates.length === 0) {
-      return NextResponse.json({ error: 'Failed to fetch any rates' }, { status: 502 })
+    if (fetchedRates.length > 0) {
+      await supabaseAdmin.from('exchange_rates').insert(fetchedRates)
     }
 
-    await supabaseAdmin.from('exchange_rates').insert(fetchedRates)
+    const fetchedCurrencies = fetchedRates.map(function (r) { return r.target_currency })
+    const staleFallback = latest.filter(function (r) { return fetchedCurrencies.indexOf(r.target_currency) === -1 })
+    const merged = fetchedRates.concat(staleFallback)
 
-    return NextResponse.json({ rates: fetchedRates, source: 'live' })
+    if (merged.length === 0) {
+      return NextResponse.json({ rates: [], source: 'unavailable', stale: true })
+    }
+
+    return NextResponse.json({ rates: merged, source: fetchedRates.length > 0 ? 'live' : 'stale-cache', stale: staleFallback.length > 0 })
   } catch (err) {
-    console.error('Exchange rate fetch error:', err)
-    return NextResponse.json({ error: 'Something went wrong', details: String(err) }, { status: 500 })
+    console.error('Exchange rate route error:', err)
+    return NextResponse.json({ rates: [], source: 'unavailable', stale: true })
   }
 }
