@@ -104,7 +104,7 @@ export default function Transactions() {
       <div className="max-w-3xl mx-auto px-6 pb-16">
         <div className="flex justify-between items-center mt-10">
           <h1 className="text-white text-2xl font-bold">Transactions</h1>
-          <button onClick={function () { setShowAddTx(!showAddTx) }} disabled={!selectedWalletId} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors text-black font-bold text-sm rounded-xl">+ Add</button>
+          <button onClick={function () { setShowAddTx(!showAddTx) }} disabled={!selectedWalletId} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors text-black font-bold text-sm rounded-lg">+ Add</button>
         </div>
 
         {wallets.length > 0 && (
@@ -121,19 +121,19 @@ export default function Transactions() {
           <div className="mt-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
             <h3 className="text-white text-sm font-semibold">New transaction for {displayName(selectedWallet.name)}</h3>
             <div className="mt-3.5 flex flex-col gap-2.5">
-              <input value={txAmount} onChange={function (e) { setTxAmount(e.target.value) }} placeholder="Amount" type="number" className="w-full px-3.5 py-2.5 rounded-xl bg-[#121615] border border-zinc-800 text-white text-sm outline-none focus:border-emerald-600 transition-colors" />
-              <select value={txType} onChange={function (e) { setTxType(e.target.value) }} className="w-full px-3.5 py-2.5 rounded-xl bg-[#121615] border border-zinc-800 text-white text-sm outline-none">
+              <input value={txAmount} onChange={function (e) { setTxAmount(e.target.value) }} placeholder="Amount" type="number" className="w-full px-3.5 py-2.5 rounded-lg bg-[#121615] border border-zinc-800 text-white text-sm outline-none focus:border-emerald-600 transition-colors" />
+              <select value={txType} onChange={function (e) { setTxType(e.target.value) }} className="w-full px-3.5 py-2.5 rounded-lg bg-[#121615] border border-zinc-800 text-white text-sm outline-none">
                 <option value="debit">Debit (money out)</option>
                 <option value="credit">Credit (money in)</option>
               </select>
-              <select value={txCategory} onChange={function (e) { setTxCategory(e.target.value) }} className="w-full px-3.5 py-2.5 rounded-xl bg-[#121615] border border-zinc-800 text-white text-sm outline-none capitalize">
+              <select value={txCategory} onChange={function (e) { setTxCategory(e.target.value) }} className="w-full px-3.5 py-2.5 rounded-lg bg-[#121615] border border-zinc-800 text-white text-sm outline-none capitalize">
                 {CATEGORIES.map(function (c) { return <option key={c} value={c}>{displayName(c)}</option> })}
               </select>
-              <input value={txDescription} onChange={function (e) { setTxDescription(e.target.value) }} placeholder="Description (optional)" className="w-full px-3.5 py-2.5 rounded-xl bg-[#121615] border border-zinc-800 text-white text-sm outline-none focus:border-emerald-600 transition-colors" />
+              <input value={txDescription} onChange={function (e) { setTxDescription(e.target.value) }} placeholder="Description (optional)" className="w-full px-3.5 py-2.5 rounded-lg bg-[#121615] border border-zinc-800 text-white text-sm outline-none focus:border-emerald-600 transition-colors" />
             </div>
             <div className="flex gap-2.5 mt-4">
-              <button onClick={handleAddTransaction} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-xl">Save</button>
-              <button onClick={function () { setShowAddTx(false) }} className="px-5 py-2.5 border border-zinc-700 text-zinc-300 hover:text-white transition-colors text-sm font-semibold rounded-xl">Cancel</button>
+              <button onClick={handleAddTransaction} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-lg">Save</button>
+              <button onClick={function () { setShowAddTx(false) }} className="px-5 py-2.5 border border-zinc-700 text-zinc-300 hover:text-white transition-colors text-sm font-semibold rounded-lg">Cancel</button>
             </div>
           </div>
         )}

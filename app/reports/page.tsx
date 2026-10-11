@@ -53,7 +53,7 @@ export default function Reports() {
             <h1 className="text-white text-2xl font-bold">Weekly report</h1>
             <p className="text-zinc-400 text-sm mt-2">An honest look at your last 7 days, not encouragement.</p>
           </div>
-          <button onClick={handleGenerateReport} disabled={reportLoading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-xl flex-shrink-0">
+          <button onClick={handleGenerateReport} disabled={reportLoading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-lg flex-shrink-0">
             {reportLoading ? 'Generating...' : 'Generate'}
           </button>
         </div>
