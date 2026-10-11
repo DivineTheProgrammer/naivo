@@ -43,15 +43,24 @@ export default function Wallets() {
     loadWallets()
   }
 
+  const displayName = function (name: string) {
+    return name.charAt(0).toUpperCase() + name.slice(1)
+  }
+
+  const formatBalance = function (amount: number, currency: string) {
+    const sign = amount < 0 ? '-' : ''
+    return sign + currency + ' ' + Math.abs(amount).toLocaleString()
+  }
+
   if (checkingAuth) {
-    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-500 text-sm">Loading</p></div>
+    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-400 text-sm">Loading</p></div>
   }
 
   return (
     <div className="min-h-screen bg-[#0a0d0c]">
       <Nav />
       <div className="max-w-3xl mx-auto px-6 pb-16">
-        <div className="flex justify-between items-center mt-8">
+        <div className="flex justify-between items-center mt-10">
           <h1 className="text-white text-2xl font-bold">Wallets</h1>
           <button onClick={function () { setShowAddWallet(!showAddWallet) }} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-xl">+ Add Wallet</button>
         </div>
@@ -68,23 +77,28 @@ export default function Wallets() {
             </div>
             <div className="flex gap-2.5 mt-4">
               <button onClick={handleAddWallet} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-xl">Add Wallet</button>
-              <button onClick={function () { setShowAddWallet(false) }} className="px-5 py-2.5 border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors text-sm font-semibold rounded-xl">Cancel</button>
+              <button onClick={function () { setShowAddWallet(false) }} className="px-5 py-2.5 border border-zinc-700 text-zinc-300 hover:text-white transition-colors text-sm font-semibold rounded-xl">Cancel</button>
             </div>
           </div>
         )}
 
         <div className="mt-6 grid gap-3">
           {wallets.length === 0 ? (
-            <p className="text-zinc-600 text-sm text-center py-8">No wallets yet. Add your first one above.</p>
+            <p className="text-zinc-400 text-sm text-center py-10">No wallets yet. Add your first one above.</p>
           ) : (
             wallets.map(function (w) {
               return (
-                <a key={w.id} href={'/transactions?walletId=' + w.id} className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-5 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-white text-base font-semibold">{w.name}</h3>
-                    {w.provider && <p className="text-zinc-600 text-xs mt-0.5">{w.provider}</p>}
+                <a key={w.id} href={'/transactions?walletId=' + w.id} className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/60 transition-colors rounded-2xl p-6 flex justify-between items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-full bg-emerald-600/15 text-emerald-400 font-bold text-base flex items-center justify-center flex-shrink-0">
+                      {displayName(w.name).charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="text-white text-base font-semibold">{displayName(w.name)}</h3>
+                      {w.provider && <p className="text-zinc-400 text-xs mt-0.5">{w.provider}</p>}
+                    </div>
                   </div>
-                  <p className="text-emerald-400 text-lg font-bold tabular-nums">{w.currency} {Number(w.balance).toLocaleString()}</p>
+                  <p className={'text-lg font-bold tabular-nums ' + (Number(w.balance) < 0 ? 'text-rose-400' : 'text-green-400')}>{formatBalance(Number(w.balance), w.currency)}</p>
                 </a>
               )
             })

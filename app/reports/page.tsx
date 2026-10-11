@@ -41,40 +41,43 @@ export default function Reports() {
   }
 
   if (checkingAuth) {
-    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-500 text-sm">Loading</p></div>
+    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-400 text-sm">Loading</p></div>
   }
 
   return (
     <div className="min-h-screen bg-[#0a0d0c]">
       <Nav />
       <div className="max-w-3xl mx-auto px-6 pb-16">
-        <h1 className="text-white text-2xl font-bold mt-8">Weekly Report</h1>
-        <p className="text-zinc-500 text-sm mt-2">An honest look at your last 7 days, not encouragement.</p>
+        <div className="flex justify-between items-start gap-4 mt-10">
+          <div>
+            <h1 className="text-white text-2xl font-bold">Weekly report</h1>
+            <p className="text-zinc-400 text-sm mt-2">An honest look at your last 7 days, not encouragement.</p>
+          </div>
+          <button onClick={handleGenerateReport} disabled={reportLoading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-xl flex-shrink-0">
+            {reportLoading ? 'Generating...' : 'Generate'}
+          </button>
+        </div>
 
-        <button onClick={handleGenerateReport} disabled={reportLoading} className="mt-5 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-xl">
-          {reportLoading ? 'Generating...' : 'Generate Report'}
-        </button>
-
-        {reportError && <p className="text-rose-400 mt-4 text-sm">{reportError}</p>}
+        {reportError && <p className="text-rose-400 mt-5 text-sm">{reportError}</p>}
 
         {report && (
           <div className="mt-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-300 text-sm leading-relaxed">{report.summary}</p>
+            <p className="text-zinc-200 text-sm leading-relaxed">{report.summary}</p>
 
             {report.insights && report.insights.length > 0 && (
-              <div className="mt-5">
-                <h4 className="text-zinc-600 text-xs font-bold uppercase tracking-wider">Insights</h4>
-                <ul className="mt-2.5 pl-5 list-disc">
-                  {report.insights.map(function (insight: string, i: number) { return <li key={i} className="text-zinc-300 text-sm mb-1.5">{insight}</li> })}
+              <div className="mt-6">
+                <h4 className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Insights</h4>
+                <ul className="mt-3 pl-5 list-disc">
+                  {report.insights.map(function (insight: string, i: number) { return <li key={i} className="text-zinc-200 text-sm mb-2">{insight}</li> })}
                 </ul>
               </div>
             )}
 
             {report.flags && report.flags.length > 0 && (
-              <div className="mt-5">
+              <div className="mt-6">
                 <h4 className="text-rose-400 text-xs font-bold uppercase tracking-wider">Worth your attention</h4>
-                <ul className="mt-2.5 pl-5 list-disc">
-                  {report.flags.map(function (flag: string, i: number) { return <li key={i} className="text-rose-400 text-sm mb-1.5">{flag}</li> })}
+                <ul className="mt-3 pl-5 list-disc">
+                  {report.flags.map(function (flag: string, i: number) { return <li key={i} className="text-rose-300 text-sm mb-2">{flag}</li> })}
                 </ul>
               </div>
             )}
@@ -82,8 +85,14 @@ export default function Reports() {
         )}
 
         {!report && !reportLoading && !reportError && (
-          <div className="mt-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 text-center">
-            <p className="text-zinc-600 text-sm">No report generated yet this session. Click the button above to generate one from your real transaction data.</p>
+          <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-14 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center">
+              <svg className="w-8 h-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h2 className="text-white text-lg font-bold mt-5">No reports yet</h2>
+            <p className="text-zinc-300 text-sm mt-2 max-w-xs">Generate one to see a plain summary of your last 7 days.</p>
           </div>
         )}
       </div>

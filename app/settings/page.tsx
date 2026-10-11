@@ -1,10 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../lib/supabase'
 import { startRegistration } from '@simplewebauthn/browser'
 import Nav from '../components/Nav'
+
+function SettingRow({ icon, title, description, children }: { icon: string, title: string, description: string, children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-5">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-lg flex-shrink-0">{icon}</div>
+        <div>
+          <h3 className="text-white text-sm font-semibold">{title}</h3>
+          <p className="text-zinc-400 text-xs mt-0.5">{description}</p>
+        </div>
+      </div>
+      <div className="flex-shrink-0">{children}</div>
+    </div>
+  )
+}
 
 export default function Settings() {
   const router = useRouter()
@@ -53,42 +69,34 @@ export default function Settings() {
   }
 
   if (checkingAuth) {
-    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-500 text-sm">Loading</p></div>
+    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-400 text-sm">Loading</p></div>
   }
 
   return (
     <div className="min-h-screen bg-[#0a0d0c]">
       <Nav />
       <div className="max-w-3xl mx-auto px-6 pb-16">
-        <h1 className="text-white text-2xl font-bold mt-8">Settings</h1>
-        <p className="text-zinc-500 text-sm mt-1">{user ? user.email : ''}</p>
+        <h1 className="text-white text-2xl font-bold mt-10">Settings</h1>
+        <p className="text-zinc-400 text-sm mt-1">{user ? user.email : ''}</p>
 
-        <p className="text-zinc-600 text-xs font-bold uppercase tracking-wider mt-8 mb-3">Preferences</p>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-white text-sm font-semibold">Home currency</h3>
-              <p className="text-zinc-600 text-xs mt-1">Used for your total balance across all wallets</p>
-            </div>
-            <select value={homeCurrency} onChange={function (e) { handleChangeHomeCurrency(e.target.value) }} className="bg-[#121615] text-white border border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none">
+        <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-10 mb-3">Preferences</p>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6">
+          <SettingRow icon={'\uD83D\uDCB1'} title="Home currency" description="Used for your total balance across all wallets">
+            <select value={homeCurrency} onChange={function (e) { handleChangeHomeCurrency(e.target.value) }} className="bg-[#121615] text-white border border-zinc-600 hover:border-zinc-500 transition-colors rounded-lg px-4 py-2 text-sm font-semibold outline-none cursor-pointer">
               <option value="NGN">NGN</option>
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
               <option value="GBP">GBP</option>
             </select>
-          </div>
+          </SettingRow>
         </div>
 
-        <p className="text-zinc-600 text-xs font-bold uppercase tracking-wider mt-8 mb-3">Security</p>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-white text-sm font-semibold">Passkey sign in</h3>
-              <p className="text-zinc-600 text-xs mt-1">Use your device instead of a magic link</p>
-            </div>
-            <button onClick={handleRegisterPasskey} className="px-4 py-2 border border-zinc-700 text-zinc-300 hover:border-zinc-600 transition-colors text-xs font-semibold rounded-lg">Register</button>
-          </div>
-          {passkeyStatus && <p className="text-zinc-400 text-xs mt-3">{passkeyStatus}</p>}
+        <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-10 mb-3">Security</p>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6">
+          <SettingRow icon={'\uD83D\uDD11'} title="Passkey sign in" description="Use your device instead of a magic link">
+            <button onClick={handleRegisterPasskey} className="bg-[#121615] text-zinc-100 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-800 transition-colors rounded-lg px-4 py-2 text-sm font-semibold">Register</button>
+          </SettingRow>
+          {passkeyStatus && <p className="text-zinc-300 text-xs pb-5 -mt-2">{passkeyStatus}</p>}
         </div>
       </div>
     </div>
