@@ -30,23 +30,23 @@ export default function Login() {
     setLoading(false)
   }
 
-  const pageStyle = { minHeight: '100vh', background: 'var(--bg)', padding: '3rem 1.5rem' }
-  const containerStyle = { maxWidth: '400px', margin: '0 auto' }
-  const inputStyle = { width: '100%', padding: '0.65rem 0.75rem', marginTop: '0.75rem', color: 'var(--text-primary)', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.95rem' }
-  const buttonStyle = { marginTop: '1rem', padding: '0.7rem 1.2rem', cursor: 'pointer', backgroundColor: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: 'var(--radius)', fontWeight: 700 }
-
   return (
-    <div style={pageStyle}>
-      <div style={containerStyle}>
-        <h1>Sign in to Naivo</h1>
+    <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center px-5 py-12">
+      <div className="w-full max-w-md">
+        <div className="w-12 h-12 rounded-xl bg-emerald-600 text-black font-extrabold text-xl flex items-center justify-center">N</div>
+        <h1 className="text-white text-2xl sm:text-3xl font-bold mt-8">Sign in to Naivo</h1>
+        <p className="text-zinc-400 text-sm mt-3 leading-relaxed">We will email you a link. No password needed.</p>
 
         {sent ? (
-          <p style={{ color: 'var(--credit)', marginTop: '1rem' }}>Check your email for a magic link to sign in.</p>
+          <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <p className="text-green-400 text-sm font-semibold">Check your email</p>
+            <p className="text-zinc-300 text-sm mt-2 leading-relaxed">We sent a sign in link to {email}. Open it on this device to continue.</p>
+          </div>
         ) : (
-          <div>
-            <input type="email" value={email} onChange={function (e) { setEmail(e.target.value) }} placeholder="you@example.com" style={inputStyle} />
-            <button onClick={handleLogin} disabled={loading || !email} style={buttonStyle}>{loading ? 'Sending...' : 'Send Magic Link'}</button>
-            {error && <p style={{ color: 'var(--debit)', marginTop: '1rem' }}>{error}</p>}
+          <div className="mt-8 flex flex-col gap-4">
+            <input type="email" value={email} onChange={function (e) { setEmail(e.target.value) }} placeholder="you@example.com" className="w-full px-4 py-3.5 rounded-lg bg-[#121615] border border-zinc-800 text-white text-base sm:text-sm outline-none focus:border-emerald-600 transition-colors" />
+            <button onClick={handleLogin} disabled={loading || !email} className="w-full px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-lg">{loading ? 'Sending...' : 'Send magic link'}</button>
+            {error && <p className="text-rose-400 text-sm">{error}</p>}
           </div>
         )}
       </div>

@@ -9,12 +9,12 @@ import Nav from '../components/Nav'
 
 function SettingRow({ icon, title, description, children }: { icon: string, title: string, description: string, children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-5">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-lg flex-shrink-0">{icon}</div>
-        <div>
+    <div className="flex items-center justify-between gap-4 py-6">
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="w-11 h-11 rounded-lg bg-zinc-800 flex items-center justify-center text-lg flex-shrink-0">{icon}</div>
+        <div className="min-w-0">
           <h3 className="text-white text-sm font-semibold">{title}</h3>
-          <p className="text-zinc-400 text-xs mt-0.5">{description}</p>
+          <p className="text-zinc-400 text-xs mt-1 leading-relaxed">{description}</p>
         </div>
       </div>
       <div className="flex-shrink-0">{children}</div>
@@ -75,14 +75,14 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-[#0a0d0c]">
       <Nav />
-      <div className="max-w-3xl mx-auto px-6 pb-16">
-        <h1 className="text-white text-2xl font-bold mt-10">Settings</h1>
-        <p className="text-zinc-400 text-sm mt-1">{user ? user.email : ''}</p>
+      <main className="max-w-3xl mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-32 md:pb-20">
+        <h1 className="text-white text-2xl sm:text-3xl font-bold">Settings</h1>
+        <p className="text-zinc-400 text-sm mt-3 break-all">{user ? user.email : ''}</p>
 
-        <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-10 mb-3">Preferences</p>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6">
+        <h2 className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-12 mb-4">Preferences</h2>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 sm:px-7">
           <SettingRow icon={'\uD83D\uDCB1'} title="Home currency" description="Used for your total balance across all wallets">
-            <select value={homeCurrency} onChange={function (e) { handleChangeHomeCurrency(e.target.value) }} className="bg-[#121615] text-white border border-zinc-600 hover:border-zinc-500 transition-colors rounded-lg px-4 py-2 text-sm font-semibold outline-none cursor-pointer">
+            <select value={homeCurrency} onChange={function (e) { handleChangeHomeCurrency(e.target.value) }} className="bg-[#121615] text-white border border-zinc-600 hover:border-zinc-500 transition-colors rounded-lg px-4 py-2.5 text-base sm:text-sm font-semibold outline-none cursor-pointer">
               <option value="NGN">NGN</option>
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
@@ -91,14 +91,14 @@ export default function Settings() {
           </SettingRow>
         </div>
 
-        <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-10 mb-3">Security</p>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6">
+        <h2 className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-12 mb-4">Security</h2>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 sm:px-7">
           <SettingRow icon={'\uD83D\uDD11'} title="Passkey sign in" description="Use your device instead of a magic link">
-            <button onClick={handleRegisterPasskey} className="bg-[#121615] text-zinc-100 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-800 transition-colors rounded-lg px-4 py-2 text-sm font-semibold">Register</button>
+            <button onClick={handleRegisterPasskey} className="bg-[#121615] text-zinc-100 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-800 transition-colors rounded-lg px-5 py-2.5 text-sm font-semibold">Register</button>
           </SettingRow>
-          {passkeyStatus && <p className="text-zinc-300 text-xs pb-5 -mt-2">{passkeyStatus}</p>}
+          {passkeyStatus && <p className="text-zinc-300 text-xs pb-6 -mt-2 leading-relaxed">{passkeyStatus}</p>}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

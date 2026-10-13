@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [homeCurrency, setHomeCurrency] = useState('NGN')
   const [rates, setRates] = useState<any[]>([])
+  const [ratesStale, setRatesStale] = useState(false)
 
   useEffect(function () {
     supabase.auth.getUser().then(async function (result) {
@@ -42,9 +43,14 @@ export default function Dashboard() {
         setRecentTransactions((txData.transactions || []).slice(0, 5))
       }
 
-      const ratesRes = await fetch('/api/exchange-rates')
-      const ratesData = await ratesRes.json()
-      setRates(ratesData.rates || [])
+      try {
+        const ratesRes = await fetch('/api/exchange-rates')
+        const ratesData = await ratesRes.json()
+        setRates(ratesData.rates || [])
+        setRatesStale(ratesData.stale === true)
+      } catch (ratesErr) {
+        setRates([])
+      }
 
       setCheckingAuth(false)
     })
@@ -56,6 +62,15 @@ export default function Dashboard() {
     const sign = amount < 0 ? '-' : ''
     const symbol = currencySymbol[currency] || ''
     return sign + symbol + Math.abs(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  }
+
+  const hasRate = function (currency: string) {
+    return currency === 'NGN' || rates.some(function (r) { return r.target_currency === currency })
+  }
+
+  const canConvert = function (fromCurrency: string) {
+    if (fromCurrency === homeCurrency) return true
+    return hasRate(fromCurrency) && hasRate(homeCurrency)
   }
 
   const convertToHome = function (amount: number, fromCurrency: string) {
@@ -74,6 +89,7 @@ export default function Dashboard() {
     return amount
   }
 
+  const ratesMissing = wallets.some(function (w) { return !canConvert(w.currency) })
   const totalInHomeCurrency = wallets.reduce(function (sum, w) { return sum + convertToHome(Number(w.balance), w.currency) }, 0)
   const totalIsNegative = totalInHomeCurrency < 0
 
@@ -84,60 +100,73 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#0a0d0c]">
       <Nav />
-      <div className="max-w-3xl mx-auto px-6 pb-16">
-        <div className="mt-12 text-center">
+      <main className="max-w-3xl mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-32 md:pb-20">
+        <section className="text-center">
           <p className="text-zinc-400 text-sm font-medium">Total balance</p>
-          <p className={'text-5xl font-extrabold mt-2 tracking-tight tabular-nums ' + (totalIsNegative ? 'text-rose-400' : 'text-white')}>
-            {formatMoney(totalInHomeCurrency, homeCurrency)}
-          </p>
-          <p className="text-zinc-400 text-sm mt-2">across {wallets.length} wallet{wallets.length === 1 ? '' : 's'}</p>
-        </div>
+          {ratesMissing ? (
+            <div>
+              <p className="text-amber-400 text-3xl sm:text-4xl font-extrabold mt-3 tracking-tight">Rates unavailable</p>
+              <p className="text-zinc-400 text-sm mt-3 max-w-sm mx-auto leading-relaxed">Some wallets use another currency and live exchange rates could not be loaded. Try again shortly.</p>
+            </div>
+          ) : (
+            <div>
+              <p className={'text-4xl sm:text-5xl font-extrabold mt-3 tracking-tight tabular-nums break-words ' + (totalIsNegative ? 'text-rose-400' : 'text-white')}>
+                {formatMoney(totalInHomeCurrency, homeCurrency)}
+              </p>
+              <p className="text-zinc-400 text-sm mt-3">across {wallets.length} wallet{wallets.length === 1 ? '' : 's'}</p>
+              {ratesStale && <p className="text-amber-400 text-xs mt-2">Using the last saved exchange rates</p>}
+            </div>
+          )}
+        </section>
 
-        <div className="grid grid-cols-2 gap-4 mt-10 items-stretch">
-          <a href="/wallets" className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 transition-colors rounded-2xl p-6 min-h-[130px] flex flex-col justify-between">
+        <section className="grid grid-cols-2 gap-4 sm:gap-5 mt-12 sm:mt-14 items-stretch">
+          <a href="/wallets" className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 transition-colors rounded-2xl p-5 sm:p-7 min-h-[140px] flex flex-col justify-between">
             <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Wallets</p>
             <div>
               <p className="text-white text-2xl font-bold">{wallets.length}</p>
               <p className="text-zinc-400 text-sm mt-1">Manage accounts</p>
             </div>
           </a>
-          <a href="/reports" className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 transition-colors rounded-2xl p-6 min-h-[130px] flex flex-col justify-between">
+          <a href="/reports" className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 transition-colors rounded-2xl p-5 sm:p-7 min-h-[140px] flex flex-col justify-between">
             <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Weekly report</p>
             <div>
               <p className="text-white text-2xl font-bold">Insights</p>
               <p className="text-zinc-400 text-sm mt-1">Generate this week</p>
             </div>
           </a>
-        </div>
+        </section>
 
-        <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-12 mb-4">Recent activity</p>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-          {recentTransactions.length === 0 ? (
-            <p className="text-zinc-400 text-sm text-center py-4">No transactions yet. <a href="/wallets" className="text-green-400 hover:text-green-300">Add a wallet</a> to get started.</p>
-          ) : (
-            recentTransactions.map(function (t, i) {
-              const credit = t.type === 'credit'
-              return (
-                <div key={t.id} className={'flex justify-between items-center py-4 ' + (i === recentTransactions.length - 1 ? '' : 'border-b border-zinc-800')}>
-                  <div className="flex items-center gap-3">
-                    <div className={'w-10 h-10 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ' + (credit ? 'bg-green-500/10 text-green-400' : 'bg-rose-500/10 text-rose-400')}>
-                      {credit ? '\u2193' : '\u2191'}
+        <section className="mt-12 sm:mt-14">
+          <h2 className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-4">Recent activity</h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 sm:px-7 py-2 sm:py-3">
+            {recentTransactions.length === 0 ? (
+              <p className="text-zinc-400 text-sm text-center py-8">No transactions yet. <a href="/wallets" className="text-green-400 hover:text-green-300">Add a wallet</a> to get started.</p>
+            ) : (
+              recentTransactions.map(function (t, i) {
+                const credit = t.type === 'credit'
+                const when = new Date(t.transaction_time).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                return (
+                  <div key={t.id} className={'flex justify-between items-center gap-3 py-5 ' + (i === recentTransactions.length - 1 ? '' : 'border-b border-zinc-800')}>
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      <div className={'w-11 h-11 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ' + (credit ? 'bg-green-500/10 text-green-400' : 'bg-rose-500/10 text-rose-400')}>
+                        {credit ? '\u2193' : '\u2191'}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-white text-sm font-medium truncate">{t.description || t.category || 'Transaction'}</div>
+                        <div className="text-zinc-500 text-xs mt-1">{when}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-white text-sm font-medium">{t.description || t.category || 'Transaction'}</div>
-                      <div className="text-zinc-500 text-xs mt-0.5">{new Date(t.transaction_time).toLocaleString()}</div>
+                    <div className={'font-bold text-sm tabular-nums flex-shrink-0 ' + (credit ? 'text-green-400' : 'text-rose-400')}>
+                      {credit ? '+' : '-'}{Number(t.amount).toLocaleString()}
                     </div>
                   </div>
-                  <div className={'font-bold text-sm tabular-nums flex-shrink-0 ' + (credit ? 'text-green-400' : 'text-rose-400')}>
-                    {credit ? '+' : '-'}{Number(t.amount).toLocaleString()}
-                  </div>
-                </div>
-              )
-            })
-          )}
-          <a href="/transactions" className="block text-center text-green-400 hover:text-green-300 text-sm font-semibold mt-4 pt-4 border-t border-zinc-800">View all transactions</a>
-        </div>
-      </div>
+                )
+              })
+            )}
+          </div>
+          <a href="/transactions" className="block text-center text-green-400 hover:text-green-300 text-sm font-semibold mt-6">View all transactions</a>
+        </section>
+      </main>
     </div>
   )
 }

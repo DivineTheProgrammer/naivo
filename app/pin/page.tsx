@@ -78,39 +78,37 @@ export default function PinPage() {
     }
   }
 
-  const pageStyle = { minHeight: '100vh', background: 'var(--bg)', padding: '3rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-  const containerStyle = { maxWidth: '360px', width: '100%', textAlign: 'center' as const }
-  const inputStyle = { width: '100%', padding: '0.75rem', marginTop: '1rem', color: 'var(--text-primary)', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '1.3rem', textAlign: 'center' as const, letterSpacing: '0.5rem' }
-  const buttonStyle = { marginTop: '1.25rem', width: '100%', padding: '0.75rem', cursor: 'pointer', backgroundColor: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: 'var(--radius)', fontWeight: 700, fontSize: '0.95rem' }
+  const pinClass = 'w-full px-4 py-4 rounded-lg bg-[#121615] border border-zinc-800 text-white text-2xl text-center tracking-[0.5em] outline-none focus:border-emerald-600 transition-colors'
 
   if (mode === 'loading') {
-    return (
-      <div style={pageStyle}>
-        <div style={containerStyle}>
-          <p style={{ color: 'var(--text-muted)' }}>Loading</p>
-        </div>
-      </div>
-    )
+    return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-400 text-sm">Loading</p></div>
   }
 
   return (
-    <div style={pageStyle}>
-      <div style={containerStyle}>
+    <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center px-5 py-12">
+      <div className="w-full max-w-sm text-center">
+        <div className="w-12 h-12 rounded-xl bg-emerald-600 text-black font-extrabold text-xl flex items-center justify-center mx-auto">N</div>
+
         {mode === 'set' ? (
           <div>
-            <h1 style={{ fontSize: '1.3rem' }}>Set a PIN</h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.4rem' }}>This adds a lock to Naivo, separate from your sign in.</p>
-            <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" style={inputStyle} />
-            <input value={confirmPin} onChange={function (e) { setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="Confirm PIN" style={inputStyle} />
-            <button onClick={handleSetPin} style={buttonStyle}>Set PIN</button>
-            {error && <p style={{ color: 'var(--debit)', marginTop: '1rem', fontSize: '0.85rem' }}>{error}</p>}
+            <h1 className="text-white text-2xl font-bold mt-8">Set a PIN</h1>
+            <p className="text-zinc-400 text-sm mt-3 leading-relaxed">This adds a lock to Naivo, separate from your sign in.</p>
+            <div className="mt-8 flex flex-col gap-4">
+              <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" className={pinClass} />
+              <input value={confirmPin} onChange={function (e) { setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="Confirm" className={pinClass} />
+            </div>
+            <button onClick={handleSetPin} className="w-full mt-6 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-lg">Set PIN</button>
+            {error && <p className="text-rose-400 text-sm mt-5">{error}</p>}
           </div>
         ) : (
           <div>
-            <h1 style={{ fontSize: '1.3rem' }}>Enter your PIN</h1>
-            <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" style={inputStyle} />
-            <button onClick={handleVerifyPin} style={buttonStyle}>Unlock</button>
-            {error && <p style={{ color: 'var(--debit)', marginTop: '1rem', fontSize: '0.85rem' }}>{error}</p>}
+            <h1 className="text-white text-2xl font-bold mt-8">Enter your PIN</h1>
+            <p className="text-zinc-400 text-sm mt-3 leading-relaxed">Enter the 4 digit PIN you set up.</p>
+            <div className="mt-8">
+              <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" className={pinClass} />
+            </div>
+            <button onClick={handleVerifyPin} className="w-full mt-6 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-lg">Unlock</button>
+            {error && <p className="text-rose-400 text-sm mt-5">{error}</p>}
           </div>
         )}
       </div>
