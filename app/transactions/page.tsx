@@ -27,11 +27,13 @@ export default function Transactions() {
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<any[]>([])
   const [showAddTx, setShowAddTx] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const [txAmount, setTxAmount] = useState('')
   const [txType, setTxType] = useState('debit')
   const [txDescription, setTxDescription] = useState('')
   const [txCategory, setTxCategory] = useState('other')
+  const [txError, setTxError] = useState('')
 
   useEffect(function () {
     supabase.auth.getUser().then(async function (result) {
@@ -63,13 +65,38 @@ export default function Transactions() {
   }
 
   const handleAddTransaction = async () => {
-    if (!selectedWalletId || !txAmount) return
-    await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletId: selectedWalletId, amount: parseFloat(txAmount), type: txType, description: txDescription, category: txCategory }) })
-    setTxAmount('')
-    setTxDescription('')
-    setTxCategory('other')
-    setShowAddTx(false)
-    loadTransactions(selectedWalletId)
+    if (!selectedWalletId) return
+    setTxError('')
+
+    const amount = parseFloat(txAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setTxError('Enter an amount greater than zero.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const res = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletId: selectedWalletId, amount: amount, type: txType, description: txDescription, category: txCategory }) })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setTxError(data.error || 'Could not save the transaction.')
+        return
+      }
+
+      setTxAmount('')
+      setTxDescription('')
+      setTxCategory('other')
+      setShowAddTx(false)
+      loadTransactions(selectedWalletId)
+      const walletsRes = await fetch('/api/wallets')
+      const walletsData = await walletsRes.json()
+      setWallets(walletsData.wallets || [])
+    } catch (err) {
+      setTxError('Network problem. Check your connection and try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const isLocked = function (lockedUntil: string | null) {
@@ -106,7 +133,7 @@ export default function Transactions() {
       <main className="max-w-3xl mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-32 md:pb-20">
         <div className="flex justify-between items-center gap-4">
           <h1 className="text-white text-2xl sm:text-3xl font-bold">Transactions</h1>
-          <button onClick={function () { setShowAddTx(!showAddTx) }} disabled={!selectedWalletId} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors text-black font-bold text-sm rounded-lg flex-shrink-0">+ Add</button>
+          <button onClick={function () { setTxError(''); setShowAddTx(!showAddTx) }} disabled={!selectedWalletId} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors text-black font-bold text-sm rounded-lg flex-shrink-0">+ Add</button>
         </div>
 
         {wallets.length > 0 && (
@@ -123,19 +150,20 @@ export default function Transactions() {
           <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8">
             <h2 className="text-white text-base font-semibold">New transaction for {displayName(selectedWallet.name)}</h2>
             <div className="mt-5 flex flex-col gap-4">
-              <input value={txAmount} onChange={function (e) { setTxAmount(e.target.value) }} placeholder="Amount" type="number" inputMode="decimal" className={inputClass} />
-              <select value={txType} onChange={function (e) { setTxType(e.target.value) }} className={inputClass}>
+              <input value={txAmount} onChange={function (e) { setTxAmount(e.target.value) }} placeholder="Amount" type="number" inputMode="decimal" min="0" step="any" aria-label="Amount" className={inputClass} />
+              <select value={txType} onChange={function (e) { setTxType(e.target.value) }} aria-label="Type" className={inputClass}>
                 <option value="debit">Debit (money out)</option>
                 <option value="credit">Credit (money in)</option>
               </select>
-              <select value={txCategory} onChange={function (e) { setTxCategory(e.target.value) }} className={inputClass}>
+              <select value={txCategory} onChange={function (e) { setTxCategory(e.target.value) }} aria-label="Category" className={inputClass}>
                 {CATEGORIES.map(function (c) { return <option key={c} value={c}>{displayName(c)}</option> })}
               </select>
-              <input value={txDescription} onChange={function (e) { setTxDescription(e.target.value) }} placeholder="Description (optional)" className={inputClass} />
+              <input value={txDescription} onChange={function (e) { setTxDescription(e.target.value) }} placeholder="Description (optional)" maxLength={200} aria-label="Description" className={inputClass} />
             </div>
+            {txError && <p className="text-rose-400 text-sm mt-5">{txError}</p>}
             <div className="flex gap-3 mt-6">
-              <button onClick={handleAddTransaction} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-lg">Save</button>
-              <button onClick={function () { setShowAddTx(false) }} className="px-6 py-3 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-semibold rounded-lg">Cancel</button>
+              <button onClick={handleAddTransaction} disabled={saving} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-lg">{saving ? 'Saving...' : 'Save'}</button>
+              <button onClick={function () { setShowAddTx(false); setTxError('') }} className="px-6 py-3 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-semibold rounded-lg">Cancel</button>
             </div>
           </div>
         )}
