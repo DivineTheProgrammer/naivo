@@ -4,39 +4,36 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../lib/supabase'
 
-const RECENT_SIGN_IN_MS = 10 * 60 * 1000
-
 export default function PinPage() {
   const router = useRouter()
   const supabase = createClient()
   const [mode, setMode] = useState<'set' | 'verify' | 'reset' | 'loading'>('loading')
   const [recentSignIn, setRecentSignIn] = useState(false)
   const [showForgotInfo, setShowForgotInfo] = useState(false)
+  const [lockedFor, setLockedFor] = useState(0)
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   useEffect(function () {
-    supabase.auth.getUser().then(async function (result) {
-      const user = result.data.user
-      if (!user) {
+    fetch('/api/pin/status').then(async function (res) {
+      if (!res.ok) {
         router.push('/login')
         return
       }
-
-      const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0
-      setRecentSignIn(Date.now() - lastSignIn < RECENT_SIGN_IN_MS)
-
-      const profileResult = await supabase.from('users').select('pin_hash').eq('id', user.id).single()
-      const hasPin = profileResult.data && profileResult.data.pin_hash
-      setMode(hasPin ? 'verify' : 'set')
+      const data = await res.json()
+      setRecentSignIn(data.recentSignIn === true)
+      setLockedFor(data.lockedForSeconds || 0)
+      setMode(data.hasPin ? 'verify' : 'set')
+    }).catch(function () {
+      router.push('/login')
     })
   }, [])
 
-  const finishUnlock = function () {
-    document.cookie = 'naivo_pin_verified=true; path=/; max-age=86400'
-    router.push('/dashboard')
-    router.refresh()
+  const lockMessage = function (seconds: number) {
+    const mins = Math.max(1, Math.ceil(seconds / 60))
+    return 'Too many attempts. Try again in ' + mins + ' minute' + (mins === 1 ? '' : 's') + '.'
   }
 
   const savePin = async function (url: string) {
@@ -50,32 +47,61 @@ export default function PinPage() {
       return
     }
 
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }) })
+    setBusy(true)
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }) })
+      const data = await res.json()
 
-    if (res.ok) {
-      finishUnlock()
-      return
-    }
+      if (res.ok) {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
 
-    const data = await res.json()
-    if (data.needsFreshSignIn) {
-      setMode('verify')
-      setShowForgotInfo(true)
-      return
+      if (data.needsFreshSignIn) {
+        setMode('verify')
+        setShowForgotInfo(true)
+        return
+      }
+
+      setError(data.error || 'Failed to save PIN')
+    } catch (err) {
+      setError('Network problem. Try again.')
+    } finally {
+      setBusy(false)
     }
-    setError(data.error || 'Failed to save PIN')
   }
 
   const handleVerifyPin = async function () {
     setError('')
-    const res = await fetch('/api/pin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }) })
-    const data = await res.json()
+    setBusy(true)
+    try {
+      const res = await fetch('/api/pin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }) })
+      const data = await res.json()
 
-    if (data.correct) {
-      finishUnlock()
-    } else {
-      setError('Incorrect PIN')
+      if (res.ok && data.correct) {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
+
       setPin('')
+
+      if (res.status === 429) {
+        setLockedFor(data.retryAfterSeconds || 900)
+        return
+      }
+
+      if (data.attemptsLeft !== undefined) {
+        setError('Incorrect PIN. ' + data.attemptsLeft + ' attempt' + (data.attemptsLeft === 1 ? '' : 's') + ' left.')
+        return
+      }
+
+      setError(data.error || 'Could not check your PIN.')
+    } catch (err) {
+      setError('Network problem. Try again.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -91,15 +117,16 @@ export default function PinPage() {
   }
 
   const handleSignOutForReset = async function () {
-    document.cookie = 'naivo_pin_verified=; path=/; max-age=0'
+    await fetch('/api/pin/lock', { method: 'POST' })
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
   }
 
   const pinClass = 'w-full px-4 py-4 rounded-lg bg-[#121615] border border-zinc-800 text-white text-2xl text-center tracking-[0.5em] outline-none focus:border-emerald-600 transition-colors'
-  const primaryClass = 'w-full mt-6 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-black font-bold text-sm rounded-lg'
+  const primaryClass = 'w-full mt-6 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-lg'
   const linkClass = 'mt-6 text-zinc-400 hover:text-white transition-colors text-sm font-medium'
+  const shownError = error || (lockedFor > 0 ? lockMessage(lockedFor) : '')
 
   if (mode === 'loading') {
     return <div className="min-h-screen bg-[#0a0d0c] flex items-center justify-center"><p className="text-zinc-400 text-sm">Loading</p></div>
@@ -115,10 +142,10 @@ export default function PinPage() {
             <h1 className="text-white text-2xl font-bold mt-8">{mode === 'reset' ? 'Reset your PIN' : 'Set a PIN'}</h1>
             <p className="text-zinc-400 text-sm mt-3 leading-relaxed">{mode === 'reset' ? 'You signed in with your email just now, so you can choose a new PIN.' : 'This adds a lock to Naivo, separate from your sign in.'}</p>
             <div className="mt-8 flex flex-col gap-4">
-              <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" className={pinClass} />
-              <input value={confirmPin} onChange={function (e) { setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="Confirm" className={pinClass} />
+              <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" aria-label="PIN" className={pinClass} />
+              <input value={confirmPin} onChange={function (e) { setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="Confirm" aria-label="Confirm PIN" className={pinClass} />
             </div>
-            <button onClick={function () { savePin(mode === 'reset' ? '/api/pin/reset' : '/api/pin') }} className={primaryClass}>{mode === 'reset' ? 'Save new PIN' : 'Set PIN'}</button>
+            <button onClick={function () { savePin(mode === 'reset' ? '/api/pin/reset' : '/api/pin') }} disabled={busy} className={primaryClass}>{mode === 'reset' ? 'Save new PIN' : 'Set PIN'}</button>
             {mode === 'reset' && <button onClick={function () { setMode('verify'); setError(''); setPin(''); setConfirmPin('') }} className={linkClass}>Back</button>}
             {error && <p className="text-rose-400 text-sm mt-5">{error}</p>}
           </div>
@@ -129,10 +156,10 @@ export default function PinPage() {
             <h1 className="text-white text-2xl font-bold mt-8">Enter your PIN</h1>
             <p className="text-zinc-400 text-sm mt-3 leading-relaxed">Enter the 4 digit PIN you set up.</p>
             <div className="mt-8">
-              <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" className={pinClass} />
+              <input value={pin} onChange={function (e) { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)) }} type="password" inputMode="numeric" placeholder="0000" aria-label="PIN" className={pinClass} />
             </div>
-            <button onClick={handleVerifyPin} className={primaryClass}>Unlock</button>
-            {error && <p className="text-rose-400 text-sm mt-5">{error}</p>}
+            <button onClick={handleVerifyPin} disabled={busy || lockedFor > 0} className={primaryClass}>Unlock</button>
+            {shownError && <p className="text-rose-400 text-sm mt-5">{shownError}</p>}
             {!showForgotInfo && <button onClick={handleForgot} className={linkClass}>Forgot PIN?</button>}
 
             {showForgotInfo && (

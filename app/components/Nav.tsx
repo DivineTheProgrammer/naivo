@@ -35,7 +35,7 @@ export default function Nav() {
   const supabase = createClient()
 
   const handleSignOut = async () => {
-    document.cookie = 'naivo_pin_verified=; path=/; max-age=0'
+    await fetch('/api/pin/lock', { method: 'POST' })
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()

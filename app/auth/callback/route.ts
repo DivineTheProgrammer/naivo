@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '../../lib/supabase-server'
+import { PIN_COOKIE_NAME, pinCookieOptions } from '../../lib/pin-cookie'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -10,5 +11,7 @@ export async function GET(req: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  return NextResponse.redirect(origin + '/dashboard')
+  const res = NextResponse.redirect(origin + '/dashboard')
+  res.cookies.set(PIN_COOKIE_NAME, '', { ...pinCookieOptions(), maxAge: 0 })
+  return res
 }
