@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '../lib/supabase'
 import Nav from '../components/Nav'
 
@@ -19,15 +19,17 @@ const ICONS: any = {
 
 export default function Transactions() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [wallets, setWallets] = useState<any[]>([])
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<any[]>([])
-  const [showAddTx, setShowAddTx] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [rowError, setRowError] = useState('')
 
   const [txAmount, setTxAmount] = useState('')
   const [txType, setTxType] = useState('debit')
@@ -46,7 +48,7 @@ export default function Transactions() {
       const walletsData = await walletsRes.json()
       setWallets(walletsData.wallets || [])
 
-      const urlWalletId = searchParams.get('walletId')
+      const urlWalletId = new URLSearchParams(window.location.search).get('walletId')
       const initialWalletId = urlWalletId || (walletsData.wallets && walletsData.wallets.length > 0 ? walletsData.wallets[0].id : null)
 
       if (initialWalletId) {
@@ -64,7 +66,37 @@ export default function Transactions() {
     setTransactions(data.transactions || [])
   }
 
-  const handleAddTransaction = async () => {
+  const refreshAll = async (walletId: string) => {
+    await loadTransactions(walletId)
+    const walletsRes = await fetch('/api/wallets')
+    const walletsData = await walletsRes.json()
+    setWallets(walletsData.wallets || [])
+  }
+
+  const resetForm = function () {
+    setEditingId(null)
+    setTxAmount('')
+    setTxType('debit')
+    setTxDescription('')
+    setTxCategory('other')
+    setTxError('')
+    setShowForm(false)
+  }
+
+  const startEdit = function (t: any) {
+    setRowError('')
+    setConfirmDeleteId(null)
+    setEditingId(t.id)
+    setTxAmount(String(t.amount))
+    setTxType(t.type)
+    setTxDescription(t.description || '')
+    setTxCategory(t.category || 'other')
+    setTxError('')
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSave = async () => {
     if (!selectedWalletId) return
     setTxError('')
 
@@ -76,7 +108,17 @@ export default function Transactions() {
 
     setSaving(true)
     try {
-      const res = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletId: selectedWalletId, amount: amount, type: txType, description: txDescription, category: txCategory }) })
+      const payload: any = { amount: amount, type: txType, description: txDescription, category: txCategory }
+      let res: Response
+
+      if (editingId) {
+        payload.id = editingId
+        res = await fetch('/api/transactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      } else {
+        payload.walletId = selectedWalletId
+        res = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      }
+
       const data = await res.json()
 
       if (!res.ok) {
@@ -84,14 +126,8 @@ export default function Transactions() {
         return
       }
 
-      setTxAmount('')
-      setTxDescription('')
-      setTxCategory('other')
-      setShowAddTx(false)
-      loadTransactions(selectedWalletId)
-      const walletsRes = await fetch('/api/wallets')
-      const walletsData = await walletsRes.json()
-      setWallets(walletsData.wallets || [])
+      resetForm()
+      await refreshAll(selectedWalletId)
     } catch (err) {
       setTxError('Network problem. Check your connection and try again.')
     } finally {
@@ -99,7 +135,28 @@ export default function Transactions() {
     }
   }
 
-  const isLocked = function (lockedUntil: string | null) {
+  const handleDelete = async (id: string) => {
+    setRowError('')
+    try {
+      const res = await fetch('/api/transactions?id=' + id, { method: 'DELETE' })
+      const data = await res.json()
+      setConfirmDeleteId(null)
+
+      if (!res.ok) {
+        setRowError(data.error || 'Could not delete the transaction.')
+        if (selectedWalletId) await refreshAll(selectedWalletId)
+        return
+      }
+
+      if (editingId === id) resetForm()
+      if (selectedWalletId) await refreshAll(selectedWalletId)
+    } catch (err) {
+      setConfirmDeleteId(null)
+      setRowError('Network problem. Check your connection and try again.')
+    }
+  }
+
+  const isEditable = function (lockedUntil: string | null) {
     if (!lockedUntil) return false
     return new Date(lockedUntil).getTime() > Date.now()
   }
@@ -133,22 +190,23 @@ export default function Transactions() {
       <main className="max-w-3xl mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-32 md:pb-20">
         <div className="flex justify-between items-center gap-4">
           <h1 className="text-white text-2xl sm:text-3xl font-bold">Transactions</h1>
-          <button onClick={function () { setTxError(''); setShowAddTx(!showAddTx) }} disabled={!selectedWalletId} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors text-black font-bold text-sm rounded-lg flex-shrink-0">+ Add</button>
+          <button onClick={function () { if (showForm) { resetForm() } else { setTxError(''); setShowForm(true) } }} disabled={!selectedWalletId} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors text-black font-bold text-sm rounded-lg flex-shrink-0">{showForm ? 'Close' : '+ Add'}</button>
         </div>
+        <p className="text-zinc-400 text-sm mt-3 leading-relaxed">You can edit or delete a transaction for 24 hours after you add it. After that it is permanent.</p>
 
         {wallets.length > 0 && (
           <div className="flex gap-3 overflow-x-auto mt-8 pb-2">
             {wallets.map(function (w) {
               const active = w.id === selectedWalletId
               const pillClass = 'px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap flex-shrink-0 transition-colors border ' + (active ? 'bg-emerald-600 border-emerald-600 text-black' : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500')
-              return <button key={w.id} onClick={function () { setSelectedWalletId(w.id); loadTransactions(w.id) }} className={pillClass}>{displayName(w.name)}</button>
+              return <button key={w.id} onClick={function () { resetForm(); setRowError(''); setConfirmDeleteId(null); setSelectedWalletId(w.id); loadTransactions(w.id) }} className={pillClass}>{displayName(w.name)}</button>
             })}
           </div>
         )}
 
-        {showAddTx && selectedWallet && (
+        {showForm && selectedWallet && (
           <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8">
-            <h2 className="text-white text-base font-semibold">New transaction for {displayName(selectedWallet.name)}</h2>
+            <h2 className="text-white text-base font-semibold">{editingId ? 'Edit transaction' : 'New transaction for ' + displayName(selectedWallet.name)}</h2>
             <div className="mt-5 flex flex-col gap-4">
               <input value={txAmount} onChange={function (e) { setTxAmount(e.target.value) }} placeholder="Amount" type="number" inputMode="decimal" min="0" step="any" aria-label="Amount" className={inputClass} />
               <select value={txType} onChange={function (e) { setTxType(e.target.value) }} aria-label="Type" className={inputClass}>
@@ -162,23 +220,25 @@ export default function Transactions() {
             </div>
             {txError && <p className="text-rose-400 text-sm mt-5">{txError}</p>}
             <div className="flex gap-3 mt-6">
-              <button onClick={handleAddTransaction} disabled={saving} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-lg">{saving ? 'Saving...' : 'Save'}</button>
-              <button onClick={function () { setShowAddTx(false); setTxError('') }} className="px-6 py-3 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-semibold rounded-lg">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors text-black font-bold text-sm rounded-lg">{saving ? 'Saving...' : (editingId ? 'Save changes' : 'Save')}</button>
+              <button onClick={resetForm} className="px-6 py-3 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-semibold rounded-lg">Cancel</button>
             </div>
           </div>
         )}
+
+        {rowError && <p className="text-rose-400 text-sm mt-6">{rowError}</p>}
 
         <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl px-5 sm:px-7 py-2 sm:py-3">
           {transactions.length === 0 ? (
             <p className="text-zinc-400 text-sm text-center py-12">No transactions yet.</p>
           ) : (
             transactions.map(function (t, i) {
-              const locked = isLocked(t.locked_until)
+              const editable = isEditable(t.locked_until)
               const credit = t.type === 'credit'
               const when = new Date(t.transaction_time).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
               return (
-                <div key={t.id} className={'flex justify-between items-center gap-3 py-5 ' + (i === transactions.length - 1 ? '' : 'border-b border-zinc-800')}>
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div key={t.id} className={'flex justify-between items-start gap-3 py-5 ' + (i === transactions.length - 1 ? '' : 'border-b border-zinc-800')}>
+                  <div className="flex items-start gap-3 sm:gap-4 min-w-0">
                     <div className={'w-11 h-11 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ' + (credit ? 'bg-green-500/10 text-green-400' : 'bg-rose-500/10 text-rose-400')}>
                       {t.category ? iconFor(t.category) : (credit ? '\u2193' : '\u2191')}
                     </div>
@@ -186,7 +246,23 @@ export default function Transactions() {
                       <div className="text-white text-sm font-medium truncate">{t.description || displayName(t.category || 'transaction')}</div>
                       {t.category && <div className="text-zinc-400 text-xs mt-1 capitalize">{t.category}</div>}
                       <div className="text-zinc-500 text-xs mt-1">{when}</div>
-                      {locked && <div className="inline-block px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[0.7rem] font-semibold mt-2">Locked {timeRemaining(t.locked_until)}</div>}
+                      {editable && <div className="inline-block px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[0.7rem] font-semibold mt-2">Editable for {timeRemaining(t.locked_until)}</div>}
+                      {editable && (
+                        <div className="flex items-center gap-5 mt-2">
+                          {confirmDeleteId === t.id ? (
+                            <>
+                              <span className="text-zinc-300 text-xs">Delete this?</span>
+                              <button onClick={function () { handleDelete(t.id) }} className="py-2 text-rose-400 hover:text-rose-300 text-xs font-semibold">Yes, delete</button>
+                              <button onClick={function () { setConfirmDeleteId(null) }} className="py-2 text-zinc-400 hover:text-white text-xs font-semibold">Cancel</button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={function () { startEdit(t) }} className="py-2 text-zinc-300 hover:text-white text-xs font-semibold">Edit</button>
+                              <button onClick={function () { setConfirmDeleteId(t.id) }} className="py-2 text-zinc-400 hover:text-rose-400 text-xs font-semibold">Delete</button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className={'font-bold text-sm tabular-nums flex-shrink-0 ' + (credit ? 'text-green-400' : 'text-rose-400')}>
